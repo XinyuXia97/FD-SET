@@ -1,0 +1,7 @@
+{
+  "name": "FD-SET extracted PDM-Lite",
+  "purpose": "configuration marker passed to the local leaderboard evaluator",
+  "controller": "PDM-Lite privileged autopilot",
+  "source": "carla_garage/team_code",
+  "track": "MAP"
+}

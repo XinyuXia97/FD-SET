@@ -1,0 +1,193 @@
+{
+  "output_root": "artifacts/paper_reproduction",
+  "seed": 2026,
+  "num_rounds": 5,
+  "protocol": "downstream_adaptation",
+  "scenario_bank_bootstrap": {
+    "source": "scenic",
+    "scenic_source_dir": "./scenic"
+  },
+  "round_log_template": "{round_dir}/ckpt.json",
+  "metrics": {
+    "keys": ["DS", "SR", "Eff", "Comf", "CR"],
+    "collision_rate_scale": "fraction"
+  },
+  "interpretation": {
+    "backend": "ollama",
+    "model": "qwen3-vl:8b-instruct",
+    "endpoint": "http://127.0.0.1:11434/api/chat",
+    "timeout_s": 240,
+    "max_tokens": 8192,
+    "num_ctx": 16384,
+    "max_images": 8,
+    "require_evidence_frames": true,
+    "think": false,
+    "fallback_to_rule_based": false,
+    "strict_schema": true,
+    "prompt_path": "prompts/vlm_prompt.txt"
+  },
+  "failure_extract": {
+    "format": "bench2drive_checkpoint",
+    "records_path": "_checkpoint.records",
+    "metric_info_root": "",
+    "frame_glob": "*.png",
+    "frame_dir_template": "{log_dir}/evidence/{save_name}/rgb",
+    "frame_limit": 8,
+    "frame_rate": 20.0,
+    "evidence_window_before": 4,
+    "evidence_window_after": 4,
+    "evidence_frame_stride": 1,
+    "video_glob": "*.mp4",
+    "video_window_before_s": 2.0,
+    "video_window_after_s": 2.0,
+    "capture_agent_evidence": true,
+    "evidence_root_template": "{round_dir}/evidence"
+  },
+  "materialization": {
+    "bench2drive": {
+      "enabled": true,
+      "route_file_name": "scenario_bank_routes.xml",
+      "trace_file_name": "materialization_trace.json"
+    },
+    "scenic": {
+      "enabled": true,
+      "program_dir": "scenic_programs",
+      "source_dir": "./scenic",
+      "source_copy_dir": "scenic_source_library",
+      "index_file_name": "scenic_library_index.json",
+      "execution_manifest_file_name": "scenic_execution_manifest.json",
+      "policy_execution": {
+        "enabled": true,
+        "max_steps": 600,
+        "generate_max_iterations": 2000,
+        "max_programs": null,
+        "route_points": 120,
+        "timestep": 0.1,
+        "render": false,
+        "record": false,
+        "result_file_name": "native_scenic_policy_results.json",
+        "failure_file_name": "native_scenic_policy_failures.jsonl"
+      }
+    }
+  },
+  "evaluation": {
+    "use_held_out_routes": true,
+    "verify_route_completion": true,
+    "held_out_routes_xml": "../Bench2Drive/leaderboard/data/bench2drive220.xml",
+    "include_evolved_scenarios": false,
+    "routes_file_name": "bench2drive220.xml",
+    "trace_file_name": "evaluation_materialization_trace.json",
+    "evolved_route_id_prefix": "fdset_evolved"
+  },
+  "retrieval": {
+    "top_k": 3,
+    "backend": "clip",
+    "model_name": "./clip",
+    "local_files_only": true,
+    "score_mode": "embedding",
+    "fallback_to_lexical": false,
+    "device": "cpu"
+  },
+  "evolution": {
+    "escalation_strength": 0.25,
+    "validate_executability": true
+  },
+  "carla": {
+    "host": "127.0.0.1",
+    "port": 3000,
+    "tm_port": 3050,
+    "pythonapi_root": "../carla",
+    "require_server": true,
+    "connection_timeout_s": 90.0
+  },
+  "bench2drive": {
+    "root": "../Bench2Drive",
+    "agent": "admlp",
+    "agent_path": "../Bench2DriveZoo_1/team_code/admlp_b2d_agent.py",
+    "agent_config": "../Bench2DriveZoo/ckpts/admlp_b2d.ckpt",
+    "zoo_root": "../Bench2DriveZoo_1",
+    "extra_pythonpath": ["../Bench2DriveZoo_1"],
+    "track": "SENSORS",
+    "gpu_rank": 0,
+    "resume": true,
+    "eval_cmd": "\"{python}\" leaderboard/leaderboard/leaderboard_evaluator.py --host {host} --port {port} --traffic-manager-port {traffic_manager_port} --routes \"{scenario_file}\" --repetitions 1 --track {track} --checkpoint \"{out_dir}/ckpt.json\" --agent \"{agent}\" --agent-config \"{agent_config}\" --resume {resume} --gpu-rank {gpu_rank}",
+    "metrics_file": "ckpt.json"
+  },
+  "model_profiles": {
+    "uniad": {
+      "agent": "uniad",
+      "agent_path": "../FD-SET/scripts/zoo_cuda_agent.py",
+      "agent_config": "../Bench2DriveZoo/adzoo/uniad/configs/stage2_e2e/base_e2e_b2d.py+../Bench2DriveZoo/ckpts/uniad_base_b2d.pth",
+      "zoo_root": "../Bench2DriveZoo",
+      "extra_pythonpath": ["../Bench2DriveZoo"],
+      "environment": {"FDSET_ZOO_AGENT_NAME": "uniad"}
+    },
+    "vad": {
+      "agent": "vad",
+      "agent_path": "../FD-SET/scripts/zoo_cuda_agent.py",
+      "agent_config": "../Bench2DriveZoo/adzoo/vad/configs/VAD/VAD_base_e2e_b2d.py+../Bench2DriveZoo/ckpts/vad_b2d_base.pth",
+      "zoo_root": "../Bench2DriveZoo",
+      "extra_pythonpath": ["../Bench2DriveZoo"],
+      "environment": {"FDSET_ZOO_AGENT_NAME": "vad"}
+    },
+    "admlp": {
+      "agent": "admlp",
+      "agent_path": "../Bench2DriveZoo_1/team_code/admlp_b2d_agent.py",
+      "agent_config": "../Bench2DriveZoo/ckpts/admlp_b2d.ckpt",
+      "zoo_root": "../Bench2DriveZoo_1",
+      "extra_pythonpath": [
+        "../Bench2DriveZoo_1"
+      ]
+    },
+    "tcp": {
+      "agent": "tcp",
+      "agent_path": "../Bench2DriveZoo_1/team_code/tcp_b2d_agent.py",
+      "agent_config": "../Bench2DriveZoo/ckpts/tcp_b2d.ckpt",
+      "zoo_root": "../Bench2DriveZoo_1",
+      "extra_pythonpath": [
+        "../Bench2DriveZoo_1"
+      ],
+      "environment": {
+        "PLANNER_TYPE": "merge_ctrl_traj"
+      }
+    }
+  },
+  "adaptation": {
+    "enabled": true,
+    "seed": 2026,
+    "max_scenarios": null,
+    "train_all_models": false,
+    "expert": {
+      "name": "PDM-Lite",
+      "backend": "external",
+      "command_template": "\"{python}\" pdm_lite/scenic_collector.py --manifest \"{scenic_execution_manifest}\" --output-dir \"{output_dir}/pdm_lite\" --demos-file \"{demos_file}\" --camera-profile {expert_camera_profile} --carla-host \"{carla_host}\" --carla-port {carla_port} --traffic-manager-port {carla_tm_port} --timeout 45 --seed {seed}",
+      "demos_file": "expert_demos.jsonl"
+    },
+    "models": {
+      "uniad": {
+        "agent": "uniad",
+        "checkpoint": "../Bench2DriveZoo/ckpts/uniad_base_b2d.pth",
+        "train_command": "./.venv/bin/python -m pdm_lite.bev_planning_adapter adapt --family uniad --demos \"{expert_data}\" --zoo-root ../Bench2DriveZoo --baseline \"{previous_checkpoint}\" --output \"{checkpoint_output}\" --epochs 1 --batch-size 1 --learning-rate 0.00001 --device cuda"
+      },
+      "vad": {
+        "agent": "vad",
+        "checkpoint": "../Bench2DriveZoo/ckpts/vad_b2d_base.pth",
+        "train_command": "./.venv/bin/python -m pdm_lite.bev_planning_adapter adapt --family vad --demos \"{expert_data}\" --zoo-root ../Bench2DriveZoo --baseline \"{previous_checkpoint}\" --output \"{checkpoint_output}\" --epochs 1 --batch-size 1 --learning-rate 0.00001 --device cuda"
+      },
+      "admlp": {
+        "agent": "admlp",
+        "checkpoint": "../Bench2DriveZoo/ckpts/admlp_b2d.ckpt",
+        "train_command": "./.venv/bin/python -m pdm_lite.admlp_adapter adapt --demos \"{expert_data}\" --zoo-root ../Bench2DriveZoo_1 --baseline \"{previous_checkpoint}\" --output \"{checkpoint_output}\" --epochs 1 --batch-size 8 --learning-rate 0.00001 --device cpu"
+      },
+      "tcp": {
+        "agent": "tcp",
+        "checkpoint": "../Bench2DriveZoo/ckpts/tcp_b2d.ckpt",
+        "train_command": "./.venv/bin/python -m pdm_lite.tcp_adapter adapt --demos \"{expert_data}\" --zoo-root ../Bench2DriveZoo_1 --baseline \"{previous_checkpoint}\" --output \"{checkpoint_output}\" --epochs 1 --batch-size 1 --learning-rate 0.00001 --device cuda"
+      }
+    }
+  },
+  "experiment": {
+    "strategies": ["full"],
+    "models": ["uniad", "vad", "admlp", "tcp"]
+  }
+}

@@ -1,0 +1,145 @@
+Metadata-Version: 2.1
+Name: fd-set
+Version: 0.1.0
+Summary: Failure-driven scenario evolution for closed-loop autonomous driving evaluation.
+Requires-Python: <3.10,>=3.8
+Description-Content-Type: text/markdown
+Requires-Dist: PyYAML>=6.0
+Requires-Dist: setuptools>=68
+Requires-Dist: dictor
+Requires-Dist: requests
+Requires-Dist: opencv-python==4.2.0.34
+Requires-Dist: pygame
+Requires-Dist: tabulate
+Requires-Dist: pexpect
+Requires-Dist: transforms3d
+Requires-Dist: py-trees==0.8.3
+Requires-Dist: numpy==1.20.0
+Requires-Dist: networkx==2.2
+Requires-Dist: Shapely==1.7.1
+Requires-Dist: psutil
+Requires-Dist: xmlschema==1.0.18
+Requires-Dist: ephem
+Requires-Dist: Pillow<10
+Requires-Dist: matplotlib
+Requires-Dist: six
+Requires-Dist: simple-watchdog-timer
+Provides-Extra: dev
+Requires-Dist: pytest>=8.0; extra == "dev"
+Provides-Extra: paper
+Requires-Dist: transformers<5,>=4.30; extra == "paper"
+Requires-Dist: scenic==2.0.0; extra == "paper"
+Provides-Extra: expert
+Requires-Dist: gym==0.17.2; extra == "expert"
+Requires-Dist: h5py<3.12,>=3.8; extra == "expert"
+Requires-Dist: laspy==2.5.4; extra == "expert"
+Requires-Dist: laszip==0.2.3; extra == "expert"
+Requires-Dist: rdp==0.8; extra == "expert"
+Requires-Dist: ujson==5.9.0; extra == "expert"
+Provides-Extra: admlp
+Requires-Dist: pytorch-lightning==2.0.9; extra == "admlp"
+Requires-Dist: torchmetrics==0.11.4; extra == "admlp"
+
+# FD-SET
+
+Failure-driven Scenario Evolution and Training for autonomous-driving safety evaluation. This repository contains the **paper protocol implementation**, not a precomputed claim of reproduced paper scores.
+
+## Method and evaluation contract
+
+The default `downstream_adaptation` protocol runs independently for UniAD, VAD, AD-MLP, and TCP over five rounds:
+
+1. Evaluate the current model on the unchanged official Bench2Drive 220-route XML and collect real camera and metric evidence from failures.
+2. Interpret those failures with local Qwen3-VL, retrieve anchors from the independent Scenic scenario bank with frozen CLIP, reconstruct/escalate accepted native Scenic programs, and append them to the bank.
+3. Execute **only the accepted evolved Scenic programs** with the PDM-Lite expert. Train the current model from its previous checkpoint on measured, admissible demonstrations; never use an official route XML as expert training input.
+4. Re-evaluate the updated model on the **same** official 220 routes. Carry its checkpoint and cumulative Scenic bank into the next round.
+
+The 220 routes provide feedback as well as post-adaptation evaluation: they are **not a feedback-free held-out generalization set**. `evaluation.use_held_out_routes` is a legacy configuration key, not a claim of independence. The separate `fixed_policy_evolution` protocol is a fixed-weight paper control: it executes cumulative native Scenic scenarios, reports their collision exposure independently, and does not train the driver. Do not combine its Scenic collision denominator with official route metrics.
+
+`--dry-run` produces synthetic orchestration data and placeholder training outputs; it cannot establish performance. A scored official run requires all 220 distinct route records, finished evaluator status, no simulator/agent execution crashes, and actual `metric_info.json` for Bench2Drive's own Eff/Comf calculation. A timed-out route can still carry a scored failure. The comparison of adapted and original weights is meaningful only when both cover the same full XML.
+
+## Repository
+
+- `core/`: five-round runner, official metric parsing, failure interpretation, Scenic retrieval/evolution/materialization, adaptation contracts.
+- `scenic/` and `maps/`: 20 independent Scenic programs and their OpenDRIVE map sources. Generated `.snet` files are caches, not source programs.
+- `pdm_lite/`: native Scenic PDM-Lite expert and real-measurement adapters for the four original Zoo models; [details](pdm_lite/README.md).
+- `configs/paper_reproduction.json`: five-round paper configuration and four separate model profiles.
+- `scripts/run_paper_suite.py`: model/strategy matrix; `scripts/evaluate_four_models_official220.py`: separate complete-route baseline-versus-adapted checkpoint comparison.
+- `reports/`, `tests/`, [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md): auditable outputs, regression tests and artifact contract.
+
+## External dependencies
+
+Use Python 3.8 with Scenic 2, CARLA 0.9.15 (server **and** ABI-compatible PythonAPI), the original Bench2Drive evaluator and its official 220-route XML, Bench2DriveZoo model implementations/configs/baseline checkpoints, and the corresponding Zoo CUDA extensions. The configuration expects sibling checkouts `../Bench2Drive`, `../Bench2DriveZoo`, `../Bench2DriveZoo_1`, and `../carla`; adjust paths in `configs/paper_reproduction.json` for other layouts. Model inference and CUDA training must use extensions compiled against the installed PyTorch/CUDA ABI. The external CARLA navigation `agents` source must be available through the configured PythonAPI root.
+
+`bash scripts/setup_bench2drive.sh ../Bench2Drive` clones the upstream benchmark when needed. Obtain Zoo checkpoints and CARLA separately; that script does not provision their model weights or server.
+
+One compatible local setup, with an appropriate CUDA 11.8 driver/toolkit where GPU training is needed:
+
+```bash
+uv venv --python /usr/bin/python3.8 --seed .venv
+uv pip install --python .venv/bin/python --index-url https://download.pytorch.org/whl/cu118 \
+  'torch==2.0.1+cu118' 'torchvision==0.15.2+cu118'
+uv pip install --python .venv/bin/python -e '.[dev,paper,expert,admlp]'
+uv pip install --python .venv/bin/python 'carla==0.9.15'
+```
+
+The paper configuration requires `ollama serve` with `qwen3-vl:8b-instruct` available locally, plus frozen `openai/clip-vit-base-patch32` files in `./clip` (Hugging Face revision `3d74acf9a28c67741b2f4f2ea7635f0aaf6f0268`). It does **not** fall back to lexical retrieval or rule-based interpretation during live runs. CLIP weights can be obtained with:
+
+```bash
+.venv/bin/python -c 'from huggingface_hub import snapshot_download; snapshot_download(repo_id="openai/clip-vit-base-patch32", revision="3d74acf9a28c67741b2f4f2ea7635f0aaf6f0268", local_dir="clip", allow_patterns=["config.json", "preprocessor_config.json", "tokenizer_config.json", "vocab.json", "merges.txt", "special_tokens_map.json", "pytorch_model.bin"])'
+```
+
+`artifacts/`, `clip/`, `.venv/` and downloaded Zoo/CARLA assets are not part of the source release. To reproduce results, archive the exact external revisions, source and runtime hashes, CARLA/PyTorch/CUDA versions, raw sensor files, baseline and trained checkpoint hashes, and unmodified official checkpoints. The repo alone cannot independently recalculate an unbundled experiment.
+
+## Run
+
+From the repository root, with a CARLA server listening on the configured port and the Ollama vision model available:
+
+```bash
+# Quick synthetic orchestration smoke; no reported scores.
+.venv/bin/python scripts/run_paper_suite.py --config configs/paper_reproduction.json \
+  --model admlp --dry-run --output-root artifacts/dry_run
+
+# Real main protocol: four independent models, full strategy, five rounds each.
+.venv/bin/python scripts/run_paper_suite.py --config configs/paper_reproduction.json \
+  --output-root artifacts/paper_reproduction
+
+# Resume an interrupted run without silently turning partial scores into full results.
+.venv/bin/python scripts/run_paper_suite.py --config configs/paper_reproduction.json \
+  --output-root artifacts/paper_reproduction --resume-existing
+```
+
+The `fixed_policy_evolution` control and ablations must be requested explicitly, e.g. `--protocol fixed_policy_evolution --strategy static --strategy retrieval --strategy recon_escalation --strategy random --strategy full`. Running a single model uses `--model uniad`, `vad`, `admlp` or `tcp`. Outputs live under `<output-root>/<run-id>/`: `run_manifest.json`, `roundN/benchmark_evaluation/`, failure interpretation/retrieval traces, accepted Scenic inputs, `roundN/adaptation/`, `roundN/benchmark_re_evaluation/`, coverage and `summary.json`. Incomplete route subsets are not official complete scores.
+
+To audit the original independent Scenario Bank before model-specific training, first compile the 20 programs, then collect real expert measurements from a running CARLA server. Six-camera `uniad` capture also provides the three RGB views required by TCP; numeric-only AD-MLP recordings cannot train camera-based models:
+
+```bash
+.venv/bin/python scripts/validate_scenic_programs.py --source-dir scenic \
+  --output artifacts/scenic_validation.json
+.venv/bin/python scripts/audit_scenic_bank.py --source-dir scenic \
+  --seeds 2026,2027,2028 --camera-profile uniad --max-steps 80 \
+  --carla-port 3000 --timeout 180 --output artifacts/scenic_bank_audit
+.venv/bin/python scripts/prepare_scenic_training_demos.py \
+  --audit artifacts/scenic_bank_audit/audit.json \
+  --output-dir artifacts/four_model_training/uniad --required-camera-profile uniad
+```
+
+The preparation step checks 20 × 3 run identities, expert/source fingerprints, sensor/measurement files, collision-free runs and contiguous safe trajectories. It does **not** rehash every sensor byte or replace a live rerun after source/runtime changes. The independent bank audit validates the inputs; it is not itself a completed five-round failure-driven paper experiment.
+
+For a separate full official checkpoint comparison after preparing *real* four-model adapted weights:
+
+```bash
+.venv/bin/python scripts/evaluate_four_models_official220.py \
+  --bench-root ../Bench2Drive --carla-launcher ../carla/CarlaUE4.sh \
+  --checkpoints artifacts/four_model_training/checkpoints \
+  --output artifacts/four_model_evaluation/official220 --gpu 0 --graphics-adapter 0
+```
+
+This script starts its own CARLA server, resumes route checkpoints after interruption, retains genuine `metric_info.json` and writes `comparison.json` only after each group has a complete official result. Select another GPU/adapter/port where needed. It is a diagnostic comparison of checkpoints, **not** a substitute for the failure-driven five-round suite.
+
+## Verification and release status
+
+```bash
+.venv/bin/python -m pytest -q
+```
+
+A previous local audit produced 60/60 completed Scenic collections, safe training indices, and updated checkpoints for the four models; a single adapted AD-MLP official route has been scored. These local artifacts are **not shipped** and do not supply complete four-model × five-round official results. At release preparation, one recorded Scenic source hash (`carlaChallenge7.scenic`) already differed from the recorded audit and a changed native adapter invalidates the old runtime fingerprint. Re-collect affected data or archive the exact original sources before claiming bitwise reproduction. No complete 220-route before/after score or five-round gain is asserted here.

@@ -1,0 +1,39 @@
+{
+  "name": "pdm_lite",
+  "protocol": "fdset_local_pdm_lite_v1",
+  "source_project": "carla_garage",
+  "source_variant": "team_code + leaderboard_autopilot + scenario_runner_autopilot",
+  "entry_points": {
+    "expert_agent": "pdm_lite/agent/autopilot.py",
+    "data_agent": "pdm_lite/agent/data_agent.py",
+    "native_collector": "pdm_lite/scenic_collector.py",
+    "leaderboard_evaluator": "pdm_lite/runtime/leaderboard_autopilot/leaderboard/leaderboard_evaluator_local.py"
+  },
+  "controller_components": [
+    "autopilot.py",
+    "config.py",
+    "privileged_route_planner.py",
+    "nav_planner.py",
+    "kinematic_bicycle_model.py",
+    "lateral_controller.py",
+    "longitudinal_controller.py",
+    "transfuser_utils.py",
+    "scenario_logger.py"
+  ],
+  "data_generation_components": [
+    "data_agent.py",
+    "birds_eye_view/chauffeurnet.py",
+    "birds_eye_view/obs_manager.py",
+    "birds_eye_view/run_stop_sign.py",
+    "birds_eye_view/traffic_light.py",
+    "birds_eye_view/transforms.py",
+    "birds_eye_view/maps_2ppm_cv/*.h5",
+    "speed_limits/*.npy"
+  ],
+  "external_runtime": [
+    "carla==0.9.15 Python package",
+    "CARLA server",
+    "numpy/scipy/torch/opencv/h5py/laspy/rdp and other requirements"
+  ],
+  "carla_garage_dependency": false
+}

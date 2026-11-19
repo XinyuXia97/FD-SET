@@ -1,0 +1,33 @@
+diff --git a/leaderboard/leaderboard/utils/statistics_manager.py b/leaderboard/leaderboard/utils/statistics_manager.py
+--- a/leaderboard/leaderboard/utils/statistics_manager.py
++++ b/leaderboard/leaderboard/utils/statistics_manager.py
+@@ -12,7 +12,9 @@
+ from __future__ import print_function
+ 
+ from dictor import dictor
+ import math
++import json
++import os
+ 
+ from srunner.scenariomanager.traffic_events import TrafficEventType
+ 
+@@ -294,10 +296,19 @@
+                 string = "    " + str(e.get_type()).replace("TrafficEventType.", "")
+                 if event_type in PENALTY_VALUE_DICT:
+                     string += " (penalty: " + str(PENALTY_VALUE_DICT[event_type]) + ")\n"
+                 elif event_type in PENALTY_PERC_DICT:
+                     string += " (value: " + str(round(e.get_dict()['percentage'], 3)) + "%)\n"
+ 
+                 f.write(string)
+ 
++        # An opted-in evaluator can retain the complete, already computed
++        # criteria record if the native CARLA server dies between ticks.
++        snapshot = os.environ.get("FDSET_CRASH_ROUTE_SNAPSHOT")
++        if snapshot:
++            temporary = snapshot + ".tmp"
++            with open(temporary, 'w') as f:
++                json.dump(route_record.to_json(), f)
++            os.replace(temporary, snapshot)
++
+     def save_sensors(self, sensors):
+         self._results.sensors = sensors

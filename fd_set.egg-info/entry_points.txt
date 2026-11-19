@@ -1,0 +1,7 @@
+[console_scripts]
+fd-set = core.closed_loop_runner:main
+fd-set-paper-suite = scripts.run_paper_suite:main
+fd-set-report = reports.make_table:main
+fd-set-report-bank = reports.make_bank_report:main
+fd-set-report-compare = reports.compare_runs:main
+fd-set-report-failures = reports.make_failure_report:main

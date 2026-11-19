@@ -1,0 +1,92 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "fd-set"
+version = "0.1.0"
+description = "Failure-driven scenario evolution for closed-loop autonomous driving evaluation."
+readme = "README.md"
+requires-python = ">=3.8,<3.10"
+dependencies = [
+  "PyYAML>=6.0",
+  "setuptools>=68",
+  "dictor",
+  "requests",
+  "opencv-python==4.2.0.34",
+  "pygame",
+  "tabulate",
+  "pexpect",
+  "transforms3d",
+  "py-trees==0.8.3",
+  "numpy==1.20.0",
+  "networkx==2.2",
+  "Shapely==1.7.1",
+  "psutil",
+  "xmlschema==1.0.18",
+  "ephem",
+  "Pillow<10",
+  "matplotlib",
+  "six",
+  "simple-watchdog-timer",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.0",
+]
+paper = [
+  "transformers>=4.30,<5",
+  "scenic==2.0.0",
+]
+expert = [
+  "gym==0.17.2",
+  "h5py>=3.8,<3.12",
+  "laspy==2.5.4",
+  "laszip==0.2.3",
+  "rdp==0.8",
+  "ujson==5.9.0",
+]
+admlp = [
+  "pytorch-lightning==2.0.9",
+  "torchmetrics==0.11.4",
+]
+
+[project.scripts]
+fd-set = "core.closed_loop_runner:main"
+fd-set-report = "reports.make_table:main"
+fd-set-report-failures = "reports.make_failure_report:main"
+fd-set-report-compare = "reports.compare_runs:main"
+fd-set-report-bank = "reports.make_bank_report:main"
+fd-set-paper-suite = "scripts.run_paper_suite:main"
+
+[tool.setuptools]
+packages = [
+  "core",
+  "reports",
+  "scripts",
+  "pdm_lite",
+  "pdm_lite.agent",
+  "pdm_lite.agent.birds_eye_view",
+  "pdm_lite.agent.speed_limits",
+  "pdm_lite.runtime",
+]
+
+[tool.setuptools.package-data]
+"pdm_lite" = ["README.md", "EXTRACTION_MANIFEST.json", "requirements.txt"]
+"pdm_lite.agent" = ["expert_agent_config.json"]
+"pdm_lite.agent.birds_eye_view" = ["endless_all.yaml", "maps_2ppm_cv/*.h5"]
+"pdm_lite.agent.speed_limits" = ["*.npy"]
+"pdm_lite.runtime" = [
+  "*_requirements.txt",
+  "leaderboard_autopilot/**/*.py",
+  "leaderboard_autopilot/**/*.txt",
+  "scenario_runner_autopilot/**/*.py",
+  "scenario_runner_autopilot/srunner/openscenario/**/*.xsd",
+  "scenario_runner_autopilot/srunner/openscenario/**/*.xslt",
+]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
+addopts = "--basetemp=artifacts/pytest"
